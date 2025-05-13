@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Панель управления{% endblock %}
+{% block content %}
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Добрый день, {{ user.username }}!</h2>
+  <p class="text-center lead">Добро пожаловать в SyntaxWay – платформу для изучения синтаксиса любого языка программирования.</p>
+
+  <!-- Форма выбора языка -->
+  <div class="card mx-auto" style="max-width: 500px;">
+    <div class="card-body">
+      <h4 class="card-title text-center mb-3">Выберите язык для изучения</h4>
+      <form method="POST" id="language-form">
+        <div class="mb-3">
+          <select class="form-select" name="language" id="language-select" required>
+            <option value="" disabled selected>Выберите язык</option>
+            {% for lang in popular_languages %}
+              <option value="{{ lang }}">{{ lang }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="d-grid">
+          <button type="submit" class="btn btn-primary">Начать изучение</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Незавершенные обучения -->
+  {% if active_languages %}
+  <h3 class="mt-5">Незавершенные обучения</h3>
+  <div class="row">
+    {% for lang, last_day in active_languages.items() %}
+      <div class="col-md-4">
+        <div class="card shadow-sm p-3 mb-4">
+          <div class="card-body text-center">
+            <h5 class="card-title">{{ lang }}</h5>
+            <p>Вы на <strong>{{ last_day }} дне</strong> обучения.</p>
+            <button class="btn btn-success continue-btn" data-lang="{{ lang }}">
+              Продолжить обучение
+            </button>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Завершенные обучения -->
+  {% if completed_languages %}
+  <h3 class="mt-5">Завершенные обучения</h3>
+  <div class="row">
+    {% for lang, last_day in completed_languages.items() %}
+      <div class="col-md-4">
+        <div class="card shadow-sm p-3 mb-4">
+          <div class="card-body text-center">
+            <h5 class="card-title">{{ lang }}</h5>
+            <p>Вы прошли обучение до <strong>{{ last_day }} дня</strong>.</p>
+            <button class="btn btn-danger reset-btn" data-lang="{{ lang }}">
+              Сбросить обучение
+            </button>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let languageSelect = document.getElementById("language-select");
+
+    // Если в sessionStorage сохранён язык, устанавливаем его в селект
+    let savedLang = sessionStorage.getItem("selectedLanguage");
+    if (savedLang) {
+        let option = [...languageSelect.options].find(o => o.value === savedLang);
+        if (option) {
+            option.selected = true;
+        }
+    }
+
+    // При изменении языка сбрасываем старый язык из sessionStorage, пишем новый
+    languageSelect.addEventListener("change", function() {
+        sessionStorage.removeItem("selectedLanguage");
+        sessionStorage.setItem("selectedLanguage", this.value);
+    });
+
+    // Обработчик кнопки "Продолжить обучение"
+    document.querySelectorAll(".continue-btn").forEach(button => {
+        button.addEventListener("click", function() {
+            let selectedLang = this.dataset.lang;
+            // Перезаписываем язык в sessionStorage
+            sessionStorage.removeItem("selectedLanguage");
+            sessionStorage.setItem("selectedLanguage", selectedLang);
+
+            // Устанавливаем язык в Flask-сессии через fetch
+            fetch("/set_language", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ language: selectedLang })
+            }).then(() => {
+                window.location.href = "/training";
+            });
+        });
+    });
+
+    // Обработчик кнопки "Сбросить обучение"
+    document.querySelectorAll(".reset-btn").forEach(button => {
+        button.addEventListener("click", function() {
+            let lang = this.dataset.lang;
+            if (confirm(`Вы уверены, что хотите сбросить обучение по ${lang}? Все данные будут удалены!`)) {
+                fetch(`/reset_training/${lang}`, { method: "POST" })
+                    .then(response => {
+                        if (response.ok) {
+                            sessionStorage.removeItem("selectedLanguage");
+                            window.location.reload();
+                        }
+                    });
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+<div class="container d-flex flex-column align-items-center justify-content-center" style="min-height: 100vh;">
+
+  <div class="card shadow border-0" style="max-width: 400px; width: 100%;">
+    <div class="card-body">
+      <h3 class="card-title text-center mb-4">Вход</h3>
+      <form method="POST">
+        <div class="mb-3">
+          <label for="email" class="form-label">Email</label>
+          <input
+            type="email"
+            class="form-control"
+            id="email"
+            name="email"
+            placeholder="Введите email"
+            required
+          >
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Пароль</label>
+          <input
+            type="password"
+            class="form-control"
+            id="password"
+            name="password"
+            placeholder="Введите пароль"
+            required
+          >
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Войти</button>
+      </form>
+      <p class="mt-3 text-center">
+        Нет аккаунта?
+        <a href="{{ url_for('register') }}">Зарегистрироваться</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

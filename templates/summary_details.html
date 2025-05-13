@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Подробные результаты по {{ language }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2 class="text-center mb-4">Подробные результаты обучения по {{ language }}</h2>
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <canvas id="dailyChart" width="600" height="400"></canvas>
+      <hr>
+      <h4>Результаты по дням:</h4>
+      <ul class="list-group">
+        {% for day in training_data %}
+          <li class="list-group-item">
+            <strong>День {{ day.day }}:</strong>
+            {% if day.correct_percentage is not none %}
+              {{ day.correct_percentage }}% правильных, {{ day.incorrect_percentage }}% неправильных
+            {% else %}
+              Результаты отсутствуют
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="text-center mt-4">
+    <a href="{{ url_for('summary') }}" class="btn btn-primary">Вернуться к итоговым результатам</a>
+  </div>
+</div>
+
+<!-- Подключаем Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const ctx = document.getElementById("dailyChart").getContext("2d");
+  const labels = [
+    {% for day in training_data %} "День {{ day.day }}", {% endfor %}
+  ];
+  const correctData = [
+    {% for day in training_data %} {{ day.correct_percentage or 0 }}, {% endfor %}
+  ];
+  const incorrectData = [
+    {% for day in training_data %} {{ day.incorrect_percentage or 0 }}, {% endfor %}
+  ];
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Правильные',
+        data: correctData,
+        backgroundColor: '#87C159'
+      }, {
+        label: 'Неправильные',
+        data: incorrectData,
+        backgroundColor: '#ADCACB'
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100
+        }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

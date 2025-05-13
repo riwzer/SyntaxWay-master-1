@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Данные по дням обучения{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2 class="text-center mb-4">Результаты обучения по дням</h2>
+  <div class="row">
+    <!-- Левый столбец: навигация по языкам -->
+    <div class="col-md-3">
+      <div class="list-group" id="language-list" role="tablist">
+        {% for lang, records in detailed_data.items() %}
+          <a class="list-group-item list-group-item-action {% if loop.first %}active{% endif %}"
+             id="lang-{{ loop.index }}-tab"
+             data-bs-toggle="list"
+             href="#lang-{{ loop.index }}"
+             role="tab">
+            {{ lang }}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Правый столбец: подробные данные по выбранному языку -->
+    <div class="col-md-9">
+      <div class="tab-content" id="language-content">
+        {% for lang, records in detailed_data.items() %}
+          <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="lang-{{ loop.index }}" role="tabpanel">
+            <h3 class="mb-3">{{ lang }} — результаты по дням</h3>
+
+            <!-- Навигация по дням для выбранного языка -->
+            <ul class="nav nav-tabs mb-3" id="day-tabs-{{ loop.index }}" role="tablist">
+              {% for record in records %}
+                {% if record.day > 0 %}
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if loop.last %}active{% endif %}"
+                            id="day-tab-{{ lang }}-{{ record.day }}"
+                            data-bs-toggle="tab"
+                            data-bs-target="#day-{{ lang }}-{{ record.day }}"
+                            type="button" role="tab">
+                      День {{ record.day }}
+                    </button>
+                  </li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+
+            <div class="tab-content" id="day-tabs-content-{{ loop.index }}">
+              {% for record in records %}
+                {% if record.day > 0 %}
+                  <div class="tab-pane fade {% if loop.last %}show active{% endif %}"
+                       id="day-{{ lang }}-{{ record.day }}"
+                       role="tabpanel">
+                    <div class="card mb-3">
+                      <div class="card-body">
+                        <h5 class="card-title">День {{ record.day }}</h5>
+
+                        <!-- Материал (уже преобразованный из Markdown) -->
+                        <p><strong>Материал:</strong></p>
+                        <div class="markdown-content">{{ record.material|safe }}</div>
+
+                        <!-- Вопросы и ответы (JSON) -->
+                        <p class="mt-3"><strong>Ответы:</strong></p>
+                        <div>
+                          {% for num, qa in record.answers.items() %}
+                            <div class="question-block">
+                              <p><strong>Вопрос {{ num }}:</strong></p>
+                              <div class="markdown-content">{{ qa.question | safe }}</div>
+                              <p><strong>Ответ:</strong> <span class="answer-text">{{ qa.answer }}</span></p>
+                            </div>
+                          {% endfor %}
+                        </div>
+
+                        <p class="mt-3"><strong>Правильных ответов:</strong> {{ record.correct_percentage }}%</p>
+                        <p><strong>Неправильных ответов:</strong> {{ record.incorrect_percentage }}%</p>
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+            <!-- График прогресса -->
+            <div class="mt-4">
+              <canvas id="chart-{{ loop.index }}" width="600" height="300"></canvas>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Подключаем Chart.js и Marked.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // Создаем графики для каждого языка
+  {% for lang, records in detailed_data.items() %}
+    let ctx{{ loop.index }} = document.getElementById("chart-{{ loop.index }}").getContext("2d");
+    let labels = [];
+    let correctData = [];
+    let incorrectData = [];
+    {% for record in records %}
+      {% if record.day > 0 %}
+        labels.push("День {{ record.day }}");
+        correctData.push({{ record.correct_percentage or 0 }});
+        incorrectData.push({{ record.incorrect_percentage or 0 }});
+      {% endif %}
+    {% endfor %}
+
+    new Chart(ctx{{ loop.index }}, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Правильные ответы (%)',
+            data: correctData,
+            borderColor: '#87C159',
+            backgroundColor: '87C159',
+            fill: true
+          },
+          {
+            label: 'Неправильные ответы (%)',
+            data: incorrectData,
+            borderColor: '#ADCACB',
+            backgroundColor: '#ADCACB',
+            fill: true
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'bottom'
+          },
+          title: {
+            display: true,
+            text: 'Динамика результатов по дням'
+          }
+        }
+      }
+    });
+  {% endfor %}
+});
+</script>
+
+<style>
+.markdown-content {
+  padding: 10px;
+  border-left: 4px solid #007bff;
+  background: #f8f9fa;
+  margin-bottom: 15px;
+}
+.question-block {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background: #f9f9f9;
+}
+.answer-text {
+  font-weight: bold;
+  color: #28a745;
+}
+</style>
+{% endblock %}

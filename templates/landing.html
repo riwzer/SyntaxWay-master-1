@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}SyntaxWay - Добро пожаловать{% endblock %}
+{% block content %}
+<!-- Подключаем Font Awesome для иконок -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-HHsOCkHeZ3S9W+JxYFi2W8NtU6G8s2qF9bGpYtYS/4k1L/BBq1B5X9KnO/9msI+XY88NzOY+Hja3G0Y0CPLiFw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<!-- Фоновая анимация -->
+<style>
+  .background-animation {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+  }
+  @keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .floating {
+    position: absolute;
+    font-size: 48px;
+    color: rgba(255, 255, 255, 0.2);
+    animation: float 6s ease-in-out infinite;
+  }
+  @keyframes float {
+    0% { transform: translate(0, 0); }
+    50% { transform: translate(20px, -20px); }
+    100% { transform: translate(0, 0); }
+  }
+  .icon1 { top: 10%; left: 20%; animation-duration: 8s; }
+  .icon2 { top: 40%; left: 70%; animation-duration: 10s; }
+  .icon3 { top: 70%; left: 30%; animation-duration: 7s; }
+  .icon4 { top: 20%; left: 80%; animation-duration: 9s; }
+  .icon5 { top: 60%; left: 50%; animation-duration: 11s; }
+</style>
+
+<div class="background-animation">
+  <div class="floating icon1"><i class="fas fa-code"></i></div>
+  <div class="floating icon2"><i class="fas fa-terminal"></i></div>
+  <div class="floating icon3"><i class="fas fa-laptop-code"></i></div>
+  <div class="floating icon4"><i class="fas fa-database"></i></div>
+  <div class="floating icon5"><i class="fas fa-brackets-curly"></i></div>
+</div>
+
+<div class="d-flex flex-column justify-content-center align-items-center" style="height: 80vh;">
+  <h1 class="display-4 text-center text-white">Добрый день, это SyntaxWay</h1>
+  <p class="lead text-center text-white">Мы поможем выучить синтаксис любого языка программирования.</p>
+  <!-- Если пользователь уже залогинен, кнопка ведёт на dashboard, иначе – на login -->
+  <a href="{% if session.get('user_id') %}{{ url_for('dashboard') }}{% else %}{{ url_for('login') }}{% endif %}" class="btn btn-primary btn-lg mt-4">Начать</a>
+</div>
+{% endblock %}

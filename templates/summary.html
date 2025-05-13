@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Итоговая сводка{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2 class="text-center mb-4">Итоговая сводка</h2>
+  <div class="row">
+    <div class="col-md-3">
+      <div class="list-group" id="language-list">
+        {% for lang, summary in summary_data.items() %}
+          <a href="{{ url_for('summary_details', language=lang) }}"
+             class="list-group-item list-group-item-action">
+             {{ lang }}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="col-md-9">
+      <div class="tab-content">
+        {% for lang, summary in summary_data.items() %}
+          <div class="tab-pane fade show {% if loop.first %}active{% endif %}" id="lang-{{ loop.index }}">
+            <h3>{{ lang }}</h3>
+            <p><strong>Средний процент правильных ответов:</strong> {{ summary.correct_avg }}%</p>
+            <p><strong>Средний процент неправильных ответов:</strong> {{ summary.incorrect_avg }}%</p>
+            <div class="card mt-3">
+              <div class="card-body">
+                <h5>Рекомендации</h5>
+                <div class="markdown-content">{{ summary.recommendations|safe }}</div>
+              </div>
+            </div>
+            <a href="{{ url_for('summary_details', language=lang) }}" class="btn btn-primary mt-3">Детальная статистика</a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

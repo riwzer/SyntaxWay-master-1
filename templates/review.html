@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Результаты теста{% endblock %}
+{% block content %}
+<div class="container mt-4 text-center">
+  <h2>Результаты теста</h2>
+
+  <!-- Блок загрузки -->
+  <div id="loading-review" class="my-5">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+      <span class="visually-hidden">Загрузка...</span>
+    </div>
+    <p class="mt-3">Подождите, пожалуйста, мы оцениваем ваши ответы...</p>
+  </div>
+
+  <!-- Блок результатов -->
+  <div id="results" style="display: none;">
+    <div class="d-flex justify-content-center">
+      <canvas id="resultChart" width="250" height="250"></canvas>
+    </div>
+
+    <!-- Блок с правильными ответами -->
+    <h4 class="mt-3">Правильных ответов: <span id="correct-percentage"></span>%</h4>
+
+    <!-- Кнопка завершения обучения для 30-го дня -->
+    <div id="final-btn-container" style="display: none; margin-top: 10px;">
+      <button id="summary-btn" type="button" class="btn btn-primary btn-lg" style="margin-top: 10px;">
+        Поздравляю! Нажмите, чтобы завершить обучение
+      </button>
+    </div>
+
+    <!-- Контейнер для кнопок -->
+    <div id="next-btn-container" class="d-flex justify-content-center mt-3">
+      <!-- Кнопка "Пройти тест ещё раз" -->
+      <form method="POST" action="{{ url_for('retake_test') }}">
+        <button type="submit" class="btn btn-secondary me-2">Пройти тест ещё раз</button>
+      </form>
+
+      <!-- Кнопка "Перейти к следующему дню" -->
+      <form method="POST" action="{{ url_for('next_day') }}">
+        <button type="submit" class="btn btn-primary me-2" id="next-day-btn">Перейти к следующему дню</button>
+      </form>
+    </div>
+
+    <!-- Блок рекомендаций -->
+    <div class="card mt-4">
+      <div class="card-body">
+        <h5 class="card-title">Рекомендации</h5>
+        <div id="recommendation-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Подключаем Chart.js и Marked.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const loadingReview = document.getElementById("loading-review");
+  const resultsBlock = document.getElementById("results");
+  const correctPercentageSpan = document.getElementById("correct-percentage");
+  const recommendationContent = document.getElementById("recommendation-content");
+  const summaryBtn = document.getElementById("summary-btn");
+  const finalBtnContainer = document.getElementById("final-btn-container");
+
+  fetch("{{ url_for('review_data') }}")
+    .then(response => response.json())
+    .then(data => {
+      if(data.error) {
+        loadingReview.innerText = data.error;
+        return;
+      }
+      loadingReview.style.display = "none";
+      resultsBlock.style.display = "block";
+
+      const correctPercentage = data.correct_percentage;
+      correctPercentageSpan.innerText = correctPercentage.toFixed(2);
+
+      // Рисуем диаграмму
+      const ctx = document.getElementById("resultChart").getContext("2d");
+      new Chart(ctx, {
+          type: "doughnut",
+          data: {
+              labels: ["Правильные", "Неправильные"],
+              datasets: [{
+                  data: [correctPercentage, 100 - correctPercentage],
+                  backgroundColor: ["#87C159", "#ADCACB"],
+                  hoverBackgroundColor: ["#87C159", "#ADCACB"]
+              }]
+          },
+          options: {
+              responsive: false,
+              maintainAspectRatio: false,
+              plugins: {
+                  legend: { position: "bottom" },
+                  title: { display: true, text: "Результаты теста" }
+              }
+          }
+      });
+
+      // Выводим рекомендации (Markdown → HTML)
+      const recMarkdown = data.recommendation || "";
+      recommendationContent.innerHTML = marked.parse(recMarkdown);
+
+      // Если 30-й день, показываем кнопку завершения
+      if (data.day === 30) {
+          document.getElementById("next-day-btn").disabled = true;
+          document.getElementById("next-day-btn").innerText = "Обучение завершено";
+          document.getElementById("next-day-btn").classList.add("btn-secondary");
+          finalBtnContainer.style.display = "block";
+      } else {
+          finalBtnContainer.style.display = "none";
+      }
+
+      // Кнопка "Поздравляю! Завершить обучение"
+      summaryBtn.addEventListener("click", function() {
+          sessionStorage.setItem("selectedLanguage", data.language);
+          window.location.href = "{{ url_for('summary') }}";
+      });
+    })
+    .catch(error => {
+      loadingReview.innerText = "Ошибка при получении результатов: " + error;
+      console.error("Ошибка при получении результатов:", error);
+    });
+});
+</script>
+{% endblock %}

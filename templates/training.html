@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}Дневные данные обучения{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex align-items-center mb-4" style="gap: 10px;">
+    <h2 id="training-title" class="mb-0">Загрузка материалов...</h2>
+  </div>
+
+  <div id="loading-section" class="text-center my-5">
+    <div class="loading-animation">
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+    </div>
+    <h4 id="loading-text" class="mt-3">
+      Подождите, мы создаем для вас уникальный обучающий материал...
+    </h4>
+  </div>
+
+  <div id="material-section" class="mb-4" style="display: none;">
+    <h4>Обучающий материал</h4>
+    <div class="card mb-3">
+      <div class="card-body" id="material-content"></div>
+    </div>
+    <button id="start-test-btn" class="btn btn-primary">Начать тестирование</button>
+  </div>
+
+  <div id="questions-section" style="display: none;">
+    <form id="questions-form" method="POST">
+      <h4>Тестовые вопросы</h4>
+      <div id="questions-container"></div>
+      <div class="d-flex justify-content-start mt-3">
+        <button id="back-to-materials-btn" type="button" class="btn btn-secondary me-2">Вернуться к материалам</button>
+        <button type="submit" class="btn btn-success">Сохранить ответы</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .loading-animation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .loading-animation .circle {
+    width: 20px;
+    height: 20px;
+    margin: 0 5px;
+    background: #007bff;
+    border-radius: 50%;
+    animation: pulse 1s infinite ease-in-out;
+  }
+  .loading-animation .circle:nth-child(2) {
+    animation-delay: 0.3s;
+  }
+  .loading-animation .circle:nth-child(3) {
+    animation-delay: 0.6s;
+  }
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(0.8);
+      opacity: 0.7;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+  }
+  #loading-text {
+    transition: opacity 0.5s ease-in-out;
+  }
+  .fade-out {
+    opacity: 0;
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const selectedLanguage = "{{ selected_language }}";
+  const sessionKey = `training_answers_${selectedLanguage}`;
+  let questionsLoaded = false;
+
+  function saveAnswers() {
+    const answers = {};
+    document.querySelectorAll("input[type=radio]:checked").forEach(input => {
+      answers[input.name] = input.value;
+    });
+    document.querySelectorAll("textarea").forEach(textarea => {
+      answers[textarea.name] = textarea.value;
+    });
+    sessionStorage.setItem(sessionKey, JSON.stringify(answers));
+  }
+
+  function loadAnswers() {
+    const savedAnswers = JSON.parse(sessionStorage.getItem(sessionKey) || "{}");
+    Object.keys(savedAnswers).forEach(name => {
+      const value = savedAnswers[name];
+      const input = document.querySelector(`input[name="${name}"][value="${value}"]`);
+      if (input) input.checked = true;
+      const textarea = document.querySelector(`textarea[name="${name}"]`);
+      if (textarea) textarea.value = value;
+    });
+  }
+
+  // 10 вариантов загрузочного текста
+  const loadingMessages = [
+    "Подождите, мы создаем для вас уникальный обучающий материал...",
+    "Пожалуйста, подождите, скоро ваш обучающий материал будет готов...",
+    "Идет подготовка материалов, пожалуйста, терпите немного...",
+    "Ваш материал уже в процессе формирования, оставайтесь с нами...",
+    "Мы собираем всю необходимую информацию, скоро материал будет готов...",
+    "Материал создается, пожалуйста, ожидайте...",
+    "Подождите немного, мы формируем для вас подробный обучающий материал...",
+    "Скоро все будет готово — материал обучения почти готов...",
+    "Ваш материал скоро будет готов, пожалуйста, оставайтесь на связи...",
+    "Мы работаем над созданием материала, пожалуйста, подождите всего немного..."
+  ];
+
+  let currentMsgIndex = 0;
+  const loadingTextElem = document.getElementById("loading-text");
+
+  function updateLoadingText() {
+    loadingTextElem.classList.add("fade-out");
+    setTimeout(() => {
+      currentMsgIndex = (currentMsgIndex + 1) % loadingMessages.length;
+      loadingTextElem.innerText = loadingMessages[currentMsgIndex];
+      loadingTextElem.classList.remove("fade-out");
+    }, 500);
+  }
+  // Обновляем текст каждые 7 секунд
+  const loadingInterval = setInterval(updateLoadingText, 7000);
+
+  fetch("{{ url_for('generate_training') }}")
+    .then(response => response.json())
+    .then(data => {
+      clearInterval(loadingInterval);
+      if(data.error) {
+        document.getElementById("training-title").innerText = data.error;
+        document.getElementById("loading-section").style.display = "none";
+        return;
+      }
+
+      const day = data.day;
+      let materialMarkdown = data.material;
+      const questionsText = data.questions;
+
+      document.getElementById("training-title").innerText = `День ${day} обучения - ${selectedLanguage}`;
+      document.getElementById("material-content").innerHTML = marked.parse(materialMarkdown);
+      document.getElementById("material-section").style.display = "block";
+      document.getElementById("loading-section").style.display = "none";
+
+      const startTestBtn = document.getElementById("start-test-btn");
+      startTestBtn.addEventListener("click", function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        loadQuestions(questionsText);
+      });
+
+      document.getElementById("back-to-materials-btn").addEventListener("click", function() {
+        saveAnswers();
+        document.getElementById("material-section").style.display = "block";
+        document.getElementById("questions-section").style.display = "none";
+      });
+
+      const hasSavedAnswers = sessionStorage.getItem(sessionKey) && Object.keys(JSON.parse(sessionStorage.getItem(sessionKey))).length > 0;
+      if (hasSavedAnswers) {
+        startTestBtn.innerText = "Продолжить тестирование";
+        startTestBtn.className = "btn btn-success";
+      }
+    })
+    .catch(error => console.error("Ошибка генерации:", error));
+
+  function loadQuestions(questionsText) {
+    if (questionsLoaded) {
+      document.getElementById("questions-section").style.display = "block";
+      document.getElementById("material-section").style.display = "none";
+      loadAnswers();
+      return;
+    }
+
+    let questionBlocks = questionsText.split("\n\n");
+    let container = document.getElementById("questions-container");
+    container.innerHTML = "";
+
+    questionBlocks.forEach(function(block, index) {
+      // Удаляем любую ведущую нумерацию формата "3. " (или "12. ") из начала
+      block = block.replace(/^\d+\.\s*/, "");
+
+      // Разделяем блок на строки
+      let lines = block.split("\n");
+
+      // Собираем все строки, которые относятся к "тексту вопроса" (включая код),
+      // пока не встретим строку, начинающуюся с "A)", "B)", "C)" или "D)" (варианты).
+      let questionLines = [];
+      let i = 0;
+      for (; i < lines.length; i++) {
+        if (/^[A-D]\)\s*/.test(lines[i].trim())) break;
+        questionLines.push(lines[i]);
+      }
+
+      // Это текст вопроса (включая код)
+      let questionText = questionLines.join("\n").trim();
+
+      // Создаем карточку
+      let card = document.createElement("div");
+      card.className = "card mb-3";
+      let cardBody = document.createElement("div");
+      cardBody.className = "card-body";
+
+      // Заголовок "Вопрос X:"
+      let questionTitle = document.createElement("h5");
+      questionTitle.className = "card-title";
+      questionTitle.innerText = `Вопрос ${index+1}:`;
+      cardBody.appendChild(questionTitle);
+
+      // Добавляем Markdown для вопроса (включая код)
+      let questionMarkdown = document.createElement("div");
+      questionMarkdown.innerHTML = marked.parse(questionText);
+      cardBody.appendChild(questionMarkdown);
+
+      // Если это один из первых 10 вопросов, есть варианты ответа (A-D)
+      if (index < 10) {
+        // Берем оставшиеся строки как варианты ответа
+        let optionLines = lines.slice(i).filter(line => /^[A-D]\)\s*/.test(line.trim()));
+        optionLines.forEach(function(option) {
+          let div = document.createElement("div");
+          div.className = "form-check";
+          let input = document.createElement("input");
+          input.className = "form-check-input";
+          input.type = "radio";
+          input.name = `answer_${index+1}`;
+          input.value = option.trim();
+          input.required = true;
+          let label = document.createElement("label");
+          label.className = "form-check-label";
+          label.innerHTML = marked.parseInline(option.trim());
+          div.appendChild(input);
+          div.appendChild(label);
+          cardBody.appendChild(div);
+        });
+      } else {
+        // Последние 5 вопросов — ввод ответа в textarea
+        let div = document.createElement("div");
+        div.className = "mb-3";
+        let label = document.createElement("label");
+        label.className = "form-label";
+        label.innerText = "Ваш ответ:";
+        let textarea = document.createElement("textarea");
+        textarea.className = "form-control";
+        textarea.name = `answer_${index+1}`;
+        textarea.required = true;
+        textarea.rows = 4;
+        div.appendChild(label);
+        div.appendChild(textarea);
+        cardBody.appendChild(div);
+      }
+
+      card.appendChild(cardBody);
+      container.appendChild(card);
+    });
+
+    questionsLoaded = true;
+    loadAnswers();
+    document.getElementById("questions-section").style.display = "block";
+    document.getElementById("material-section").style.display = "none";
+  }
+
+  document.getElementById("questions-form").addEventListener("submit", function() {
+    sessionStorage.removeItem(sessionKey);
+  });
+});
+</script>
+{% endblock %}
